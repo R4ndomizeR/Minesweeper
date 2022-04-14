@@ -69,9 +69,12 @@ const state = reactive({
   cellSize: 30,
 
   cells: [],
+  checked: [],
 
   started: false,
-  lastOpened: 0
+
+  lastOpened: 0,
+  time: 0,
 })
 
 const meth = {
@@ -121,11 +124,11 @@ const meth = {
 
     if (x - 1 >= 0)
       callback(x - 1, y)
-    if (x + 1 < state.columns) // Width
+    if (x + 1 < state.columns)
       callback(x + 1, y)
     if (y - 1 >= 0)
       callback(x, y - 1)
-    if (y + 1 < state.rows) //Height
+    if (y + 1 < state.rows)
       callback(x, y + 1)
 
     if (x - 1 >= 0 && y - 1 >= 0)
@@ -246,29 +249,44 @@ const meth = {
     state.cells[val].marked = !state.cells[val].marked
   },
 
-  exploseBombs: (arr) => {
-    let time = 0
+  getDistance(x1, y1, x2, y2) {
+    let y = x2 - x1
+    let x = y2 - y1
 
-    arr.forEach((item, index) => {
-      time += 50
-      setTimeout(() => {
-        state.cells[item].opened = true
-      }, time)
-    })
+    return Math.sqrt(x * x + y * y)
+  },
 
-    // meth.forEachArround(pos, (a, b) => {
-    //   const newPos = state.columns * b + a
+  exploseBombs: (val) => {
 
-    //   if (state.cells[newPos].value < 0 && !state.cells[newPos].opened) {
-    //     console.log(newPos)
-    //     time += 10
-    //     setTimeout(() => {
-    //       state.cells[newPos].opened = true
-    //     }, time)
-    //   }
+    if (val < 0 || val >= state.cells.length) return
 
-    //   meth.exploseBombs(newPos)
+    // val.forEach((item, index) => {
+    //   time += 50
+    //   setTimeout(() => {
+    //     state.cells[item].opened = true
+    //   }, time)
     // })
+
+    if (state.checked.includes(val)) return
+
+    state.checked.push(val)
+
+    meth.forEachArround(val, (a, b) => {
+      const newPos = state.columns * b + a
+
+      if (state.cells[newPos].value < 0 && !state.cells[newPos].opened) {
+
+        state.time += 10
+        setTimeout(() => {
+          console.log(newPos)
+          state.cells[newPos].opened = true
+        }, state.time)
+
+      }
+
+      meth.exploseBombs(newPos)
+
+    })
   },
 
   gameEnd: () => {
@@ -276,16 +294,19 @@ const meth = {
 
     console.log('state.lastOpened', state.lastOpened)
 
-    const arr = []
+    const val = state.lastOpened
 
-    state.cells.forEach((item, index) => {
-      if (item.value < 0 && !item.opened) {
-        console.log('push', index)
-        arr.push(index)
-      }
-    })
+    // const arr = []
 
-    meth.exploseBombs(arr)
+    // state.cells.forEach((item, index) => {
+    //   if (item.value < 0 && !item.opened) {
+    //     console.log('push', index)
+    //     arr.push(index)
+    //   }
+    // })
+
+    meth.exploseBombs(val)
+    state.time = 0
   },
 
   gameOver: () => {
