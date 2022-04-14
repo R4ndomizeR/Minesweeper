@@ -1,8 +1,18 @@
 <style scoped>
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+}
+.group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 .grid {
   display: grid;
-  margin: 0 auto;
-  gap: 1px;
+  margin: 10px auto 0 auto;
+  /* gap: 1px; */
 }
 
 .cell-wrap {
@@ -12,13 +22,31 @@
 </style>
 
 <template>
-  <div class="grid" :style="meth.getGridStyle()">
-    <div v-for="(cell, index) in state.cells || []" :key="index" class="cell-wrap">
-      <BoardCell
-        :data="cell"
-        @left-click="meth.openCell(index, $event)"
-        @right-click="meth.toggleFlagCell(index, $event)"
-      />
+  <div class="main">
+    <div class="controls">
+      <div class="group">
+        <span>columns</span>
+        <input v-model="tempState.columns" min="10" max="60" type="number" />
+      </div>
+      <div class="group">
+        <span>rows</span>
+        <input v-model="tempState.rows" min="10" max="30" type="number" />
+      </div>
+      <div class="group">
+        <span>mines</span>
+        <input v-model="tempState.bombs" min="10" max="1000" type="number" />
+      </div>
+
+      <button @click="meth.init()">restart</button>
+    </div>
+    <div class="grid" :style="meth.getGridStyle()">
+      <div v-for="(cell, index) in state.cells || []" :key="index" class="cell-wrap">
+        <BoardCell
+          :data="cell"
+          @left-click="meth.openCell(index, $event)"
+          @right-click="meth.toggleFlagCell(index, $event)"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -27,21 +55,24 @@
 import { onMounted, reactive } from 'vue'
 import BoardCell from './BoardCell.vue'
 
+const tempState = reactive({
+  columns: 10,
+  rows: 10,
+  bombs: 10,
+})
+
 const state = reactive({
-  columns: 30,
-  rows: 20,
-  bombs: 20,
+  columns: 0,
+  rows: 0,
+  bombs: 0,
 
   cellSize: 30,
 
   cells: [],
 
-  started: false
+  started: false,
+  lastOpened: 0
 })
-
-const getters = {
-
-}
 
 const meth = {
   getGridStyle: () => {
@@ -133,9 +164,18 @@ const meth = {
   },
 
   init: () => {
+    state.columns = tempState.columns
+    state.rows = tempState.rows
+    state.bombs = tempState.bombs
+
     const cellsCount = state.columns * state.rows
 
     state.cells.length = 0
+
+    if (cellsCount <= state.bombs) {
+      console.log(`cellsCount <= state.bombs`)
+      return
+    }
 
     for (let i = 0; i < cellsCount; i++) {
       state.cells.push({
@@ -144,6 +184,7 @@ const meth = {
         value: 0
       })
     }
+    meth.placeBombs()
   },
 
   checkOpened: () => {
@@ -162,6 +203,8 @@ const meth = {
 
   openCell: (val) => {
     if (!state.started) return
+    state.lastOpened = val
+
     console.log('openCell: ' + val)
 
     if (val < 0 || val >= state.cells.length) return
@@ -177,8 +220,6 @@ const meth = {
     }
 
     if (state.cells[val].value == 0) {
-      // meth.openAroundCell(val)
-
       let time = 0
 
       meth.forEachArround(val, (a, b) => {
@@ -199,35 +240,58 @@ const meth = {
 
   toggleFlagCell: (val) => {
     if (!state.started) return
-    console.log('toggleFlag: ' + val)
 
     if (val < 0 || val >= state.cells.length) return
 
     state.cells[val].marked = !state.cells[val].marked
   },
 
-  gameEnd: () => {
-    state.started = false
-    setTimeout(() => {
-      meth.init()
-      meth.placeBombs()
-    }, 5000)
-
+  exploseBombs: (arr) => {
     let time = 0
 
-    state.cells.forEach((item, idx, arr) => {
+    arr.forEach((item, index) => {
+      time += 50
+      setTimeout(() => {
+        state.cells[item].opened = true
+      }, time)
+    })
+
+    // meth.forEachArround(pos, (a, b) => {
+    //   const newPos = state.columns * b + a
+
+    //   if (state.cells[newPos].value < 0 && !state.cells[newPos].opened) {
+    //     console.log(newPos)
+    //     time += 10
+    //     setTimeout(() => {
+    //       state.cells[newPos].opened = true
+    //     }, time)
+    //   }
+
+    //   meth.exploseBombs(newPos)
+    // })
+  },
+
+  gameEnd: () => {
+    state.started = false
+
+    console.log('state.lastOpened', state.lastOpened)
+
+    const arr = []
+
+    state.cells.forEach((item, index) => {
       if (item.value < 0 && !item.opened) {
-        time += 100
-        setTimeout(() => {
-          item.opened = true
-        }, time)
+        console.log('push', index)
+        arr.push(index)
       }
     })
+
+    meth.exploseBombs(arr)
   },
 
   gameOver: () => {
     console.log('GAME_OVER')
     meth.gameEnd()
+
   },
 
   gameWin: () => {
@@ -238,10 +302,6 @@ const meth = {
 
 onMounted(() => {
   meth.init()
-  meth.placeBombs()
-
-  // meth.updateCounterAroundCell(10)
-  // meth.testAroundPos(68)
 })
 
 </script>
