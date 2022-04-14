@@ -25,20 +25,23 @@
   <div class="main">
     <div class="controls">
       <div class="group">
-        <span>columns</span>
-        <input v-model="tempState.columns" min="10" max="60" type="number" />
-      </div>
-      <div class="group">
         <span>rows</span>
-        <input v-model="tempState.rows" min="10" max="30" type="number" />
+        <input v-model="inputState.rows" min="10" max="30" type="number" />
       </div>
+
+      <div class="group">
+        <span>columns</span>
+        <input v-model="inputState.columns" min="10" max="60" type="number" />
+      </div>
+
       <div class="group">
         <span>mines</span>
-        <input v-model="tempState.bombs" min="10" max="1000" type="number" />
+        <input v-model="inputState.bombs" min="10" max="1000" type="number" />
       </div>
 
       <button @click="meth.init()">restart</button>
     </div>
+
     <div class="grid" :style="meth.getGridStyle()">
       <div v-for="(cell, index) in state.cells || []" :key="index" class="cell-wrap">
         <BoardCell
@@ -54,14 +57,18 @@
 <script  setup>
 import { onMounted, reactive } from 'vue'
 import BoardCell from './BoardCell.vue'
+import { utils } from '../utils/utils.js'
 
-const tempState = reactive({
-  columns: 10,
-  rows: 10,
-  bombs: 10,
+const inputState = reactive({
+  columns: 60,
+  rows: 30,
+  bombs: 100,
 })
 
 const state = reactive({
+  started: false,
+  lastOpened: 0,
+
   columns: 0,
   rows: 0,
   bombs: 0,
@@ -69,111 +76,19 @@ const state = reactive({
   cellSize: 30,
 
   cells: [],
-  checked: [],
-
-  started: false,
-
-  lastOpened: 0,
-  time: 0,
+  bombsArray: []
 })
 
 const meth = {
-  getGridStyle: () => {
-    return `
-      grid-template-columns: repeat(${state.columns}, ${state.cellSize}px);
-      grid-template-rows: repeat(${state.rows}, ${state.cellSize}px);
-    `
-  },
-
-  getRandomPos: () => {
-    return Math.floor(Math.random() * state.columns * state.rows)
-  },
-
-  getRandomBombsPos: () => {
-    let counter = 0
-    let bombsArray = []
-
-    while (counter < state.bombs) {
-      const pos = meth.getRandomPos()
-
-      if (bombsArray.includes(pos)) continue
-
-      bombsArray.push(pos)
-
-      counter++
-    }
-
-    return bombsArray
-  },
-
-  getX(index) {
-    return index % state.columns
-  },
-
-  getY(index) {
-    return parseInt(index / state.columns)
-  },
-
-  getPosFromXY(x, y) {
-    return state.columns * y + x
-  },
-
-  forEachArround(index, callback) {
-    const x = this.getX(index)
-    const y = this.getY(index)
-
-    if (x - 1 >= 0)
-      callback(x - 1, y)
-    if (x + 1 < state.columns)
-      callback(x + 1, y)
-    if (y - 1 >= 0)
-      callback(x, y - 1)
-    if (y + 1 < state.rows)
-      callback(x, y + 1)
-
-    if (x - 1 >= 0 && y - 1 >= 0)
-      callback(x - 1, y - 1)
-    if (x - 1 >= 0 && y + 1 < state.rows)
-      callback(x - 1, y + 1)
-    if (x + 1 < state.columns && y + 1 < state.rows)
-      callback(x + 1, y + 1)
-    if (x + 1 < state.columns && y - 1 >= 0)
-      callback(x + 1, y - 1)
-  },
-
-  updateCounterAroundCell: (cellIndex) => {
-    // let temp = `BIDX: ${cellIndex}\n`
-
-    meth.forEachArround(cellIndex, (x, y) => {
-      const pos = meth.getPosFromXY(x, y)
-      if (state.cells[pos].value < 0) return
-
-      state.cells[pos].value = state.cells[pos].value + 1
-    })
-  },
-
-  placeBombs: () => {
-    const bombsArray = meth.getRandomBombsPos()
-
-    console.log(bombsArray)
-
-    for (let i = 0; i < bombsArray.length; i++) {
-      console.log(`BPOS:${bombsArray[i]}`)
-      state.cells[bombsArray[i]].value = -1
-      meth.updateCounterAroundCell(bombsArray[i])
-    }
-
-    state.started = true
-  },
-
   init: () => {
-    state.columns = tempState.columns
-    state.rows = tempState.rows
-    state.bombs = tempState.bombs
+    state.cells.length = 0
+    state.bombsArray.length = 0
+
+    state.columns = inputState.columns
+    state.rows = inputState.rows
+    state.bombs = inputState.bombs
 
     const cellsCount = state.columns * state.rows
-
-    state.cells.length = 0
 
     if (cellsCount <= state.bombs) {
       console.log(`cellsCount <= state.bombs`)
@@ -187,15 +102,56 @@ const meth = {
         value: 0
       })
     }
+
+    // console.log(state.cells)
+
     meth.placeBombs()
   },
 
-  checkOpened: () => {
-    const result = state.cells.reduce((sum, item) => sum + item.value, 0)
+  getGridStyle: () => {
+    return `
+      grid-template-columns: repeat(${state.columns}, ${state.cellSize}px);
+      grid-template-rows: repeat(${state.rows}, ${state.cellSize}px);
+    `
+  },
+
+  updateCounterAroundCell: (cellIndex) => {
+    // let temp = `BIDX: ${cellIndex}\n`
+
+    utils.forEachArround(cellIndex, state.rows, state.columns, (x, y) => {
+      const pos = utils.getPosFromXY(x, y, state.columns)
+      if (state.cells[pos].value < 0) return
+
+      state.cells[pos].value = state.cells[pos].value + 1
+    })
+  },
+
+  placeBombs: () => {
+    state.bombsArray = utils.getRandomArray(0, state.columns * state.rows, state.bombs)
+
+    // console.log(state.bombsArray)
+
+    state.bombsArray.forEach((item) => {
+      console.log(`BPOS:${item}`)
+      state.cells[item].value = -1
+      meth.updateCounterAroundCell(item)
+    })
+
+    // for (let i = 0; i < state.bombsArray.length; i++) {
+    //   // console.log(`BPOS:${state.bombsArray[i]}`)
+    //   state.cells[state.bombsArray[i]].value = -1
+    //   meth.updateCounterAroundCell(state.bombsArray[i])
+    // }
+
+    state.started = true
+  },
+
+  isAllOpened: () => {
+    // const result = state.cells.reduce((sum, item) => sum + item.value, 0)
 
     let openedCount = 0
 
-    state.cells.forEach((item, idx, arr) => {
+    state.cells.forEach((item) => {
       if (item.opened) openedCount++
     })
 
@@ -208,7 +164,7 @@ const meth = {
     if (!state.started) return
     state.lastOpened = val
 
-    console.log('openCell: ' + val)
+    // console.log('openCell: ' + val)
 
     if (val < 0 || val >= state.cells.length) return
 
@@ -225,7 +181,7 @@ const meth = {
     if (state.cells[val].value == 0) {
       let time = 0
 
-      meth.forEachArround(val, (a, b) => {
+      utils.forEachArround(val, state.rows, state.columns, (a, b) => {
         time += 10
         setTimeout(() => {
           const pos = state.columns * b + a
@@ -236,102 +192,56 @@ const meth = {
       })
     }
 
-    if (meth.checkOpened()) {
-      meth.gameWin()
-    }
+    if (meth.isAllOpened()) meth.gameWin()
   },
 
   toggleFlagCell: (val) => {
     if (!state.started) return
 
-    if (val < 0 || val >= state.cells.length) return
+    if (!utils.inInterval(0, state.cells.length, val)) return
 
     state.cells[val].marked = !state.cells[val].marked
   },
 
-  getDistance(x1, y1, x2, y2) {
-    let y = x2 - x1
-    let x = y2 - y1
-
-    return Math.sqrt(x * x + y * y)
-  },
-
-  exploseBombs: (val) => {
-    // if (val < 0 || val >= state.cells.length) return
-
+  exploseBombs: () => {
     let time = 0
 
-    state.lastOpened
+    state.bombsArray.filter((idx) => {
+      if (!state.cells.includes(idx)) return false
 
-    const arr = []
-
-    state.cells.forEach((item, index) => {
-      if (item.value < 0 && !item.opened) {
-        console.log('push', index)
-        arr.push(index)
-      }
+      if (state.cells[idx].value < 0 && !state.cells[idx].opened) return true
     })
 
-    console.log(arr)
-
-    arr.sort((a, b) =>
-      meth.getDistance(
-        meth.getX(state.lastOpened),
-        meth.getY(state.lastOpened),
-        meth.getX(a),
-        meth.getY(a)
-      ) - meth.getDistance(
-        meth.getX(state.lastOpened),
-        meth.getY(state.lastOpened),
-        meth.getX(b),
-        meth.getY(b)
+    state.bombsArray.sort((a, b) =>
+      utils.getDistance(
+        utils.getX(state.lastOpened, state.columns),
+        utils.getY(state.lastOpened, state.columns),
+        utils.getX(a, state.columns),
+        utils.getY(a, state.columns)
+      ) - utils.getDistance(
+        utils.getX(state.lastOpened, state.columns),
+        utils.getY(state.lastOpened, state.columns),
+        utils.getX(b, state.columns),
+        utils.getY(b, state.columns)
       )
     )
 
-    console.log(arr)
-
-    arr.forEach((item, index) => {
-      time += 50
+    state.bombsArray.forEach((idx) => {
+      time += 30
       setTimeout(() => {
-        state.cells[item].opened = true
+        state.cells[idx].opened = true
       }, time)
     })
-
-
-    // if (state.checked.includes(val)) return
-
-    // state.checked.push(val)
-
-    // meth.forEachArround(val, (a, b) => {
-    //   const newPos = state.columns * b + a
-
-    //   if (state.cells[newPos].value < 0 && !state.cells[newPos].opened) {
-
-    //     state.time += 10
-    //     setTimeout(() => {
-    //       console.log(newPos)
-    //       state.cells[newPos].opened = true
-    //     }, state.time)
-
-    //   }
-
-    //   meth.exploseBombs(newPos)
-
-    // })
   },
 
   gameEnd: () => {
     state.started = false
-
-    console.log('state.lastOpened', state.lastOpened)
-
-    meth.exploseBombs()
   },
 
   gameOver: () => {
     console.log('GAME_OVER')
     meth.gameEnd()
-
+    meth.exploseBombs()
   },
 
   gameWin: () => {
