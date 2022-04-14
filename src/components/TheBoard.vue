@@ -257,36 +257,67 @@ const meth = {
   },
 
   exploseBombs: (val) => {
+    // if (val < 0 || val >= state.cells.length) return
 
-    if (val < 0 || val >= state.cells.length) return
+    let time = 0
 
-    // val.forEach((item, index) => {
-    //   time += 50
-    //   setTimeout(() => {
-    //     state.cells[item].opened = true
-    //   }, time)
-    // })
+    state.lastOpened
 
-    if (state.checked.includes(val)) return
+    const arr = []
 
-    state.checked.push(val)
-
-    meth.forEachArround(val, (a, b) => {
-      const newPos = state.columns * b + a
-
-      if (state.cells[newPos].value < 0 && !state.cells[newPos].opened) {
-
-        state.time += 10
-        setTimeout(() => {
-          console.log(newPos)
-          state.cells[newPos].opened = true
-        }, state.time)
-
+    state.cells.forEach((item, index) => {
+      if (item.value < 0 && !item.opened) {
+        console.log('push', index)
+        arr.push(index)
       }
-
-      meth.exploseBombs(newPos)
-
     })
+
+    console.log(arr)
+
+    arr.sort((a, b) =>
+      meth.getDistance(
+        meth.getX(state.lastOpened),
+        meth.getY(state.lastOpened),
+        meth.getX(a),
+        meth.getY(a)
+      ) - meth.getDistance(
+        meth.getX(state.lastOpened),
+        meth.getY(state.lastOpened),
+        meth.getX(b),
+        meth.getY(b)
+      )
+    )
+
+    console.log(arr)
+
+    arr.forEach((item, index) => {
+      time += 50
+      setTimeout(() => {
+        state.cells[item].opened = true
+      }, time)
+    })
+
+
+    // if (state.checked.includes(val)) return
+
+    // state.checked.push(val)
+
+    // meth.forEachArround(val, (a, b) => {
+    //   const newPos = state.columns * b + a
+
+    //   if (state.cells[newPos].value < 0 && !state.cells[newPos].opened) {
+
+    //     state.time += 10
+    //     setTimeout(() => {
+    //       console.log(newPos)
+    //       state.cells[newPos].opened = true
+    //     }, state.time)
+
+    //   }
+
+    //   meth.exploseBombs(newPos)
+
+    // })
   },
 
   gameEnd: () => {
@@ -294,19 +325,7 @@ const meth = {
 
     console.log('state.lastOpened', state.lastOpened)
 
-    const val = state.lastOpened
-
-    // const arr = []
-
-    // state.cells.forEach((item, index) => {
-    //   if (item.value < 0 && !item.opened) {
-    //     console.log('push', index)
-    //     arr.push(index)
-    //   }
-    // })
-
-    meth.exploseBombs(val)
-    state.time = 0
+    meth.exploseBombs()
   },
 
   gameOver: () => {
