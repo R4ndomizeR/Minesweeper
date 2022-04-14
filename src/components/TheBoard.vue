@@ -27,30 +27,10 @@
 import { onMounted, reactive } from 'vue'
 import BoardCell from './BoardCell.vue'
 
-const AE = Object.freeze({
-  /*
-    7 8 9
-    4 x 6
-    1 2 3
-  */
-
-  BOTTOM_LEFT: 1,
-  BOTTOM: 2,
-  BOTTOM_RIGHT: 3,
-
-  RIGHT: 6,
-
-  TOP_RIGHT: 9,
-  TOP: 8,
-  TOP_LEFT: 7,
-
-  LEFT: 4,
-})
-
 const state = reactive({
-  columns: 9,
-  rows: 9,
-  bombs: 10,
+  columns: 30,
+  rows: 20,
+  bombs: 20,
 
   cellSize: 30,
 
@@ -58,6 +38,10 @@ const state = reactive({
 
   started: false
 })
+
+const getters = {
+
+}
 
 const meth = {
   getGridStyle: () => {
@@ -88,7 +72,22 @@ const meth = {
     return bombsArray
   },
 
-  forEachArround(x, y, callback) {
+  getX(index) {
+    return index % state.columns
+  },
+
+  getY(index) {
+    return parseInt(index / state.columns)
+  },
+
+  getPosFromXY(x, y) {
+    return state.columns * y + x
+  },
+
+  forEachArround(index, callback) {
+    const x = this.getX(index)
+    const y = this.getY(index)
+
     if (x - 1 >= 0)
       callback(x - 1, y)
     if (x + 1 < state.columns) // Width
@@ -108,93 +107,15 @@ const meth = {
       callback(x + 1, y - 1)
   },
 
-  getPosAround: (cellIdx, aroundIdx, offset = 1) => {
-
-    const len = state.cells.length
-
-    let pos = null
-
-    // const y = parseInt(cellIdx / state.columns)
-    const x = cellIdx % state.columns
-
-    //N = COLS*y + x
-
-    // console.log(x, y)
-
-    switch (aroundIdx) {
-      case AE.TOP_LEFT:
-        pos = cellIdx - state.columns - offset
-        if (x == 0) pos = null
-        break
-      case AE.TOP:
-        pos = cellIdx - state.columns
-        break
-      case AE.TOP_RIGHT:
-        pos = cellIdx - state.columns + offset
-        if (x + offset == state.columns) pos = null
-        break
-
-      case AE.LEFT:
-        pos = cellIdx - offset
-        if (x == 0) pos = null
-        break
-      case AE.RIGHT:
-        pos = cellIdx + offset
-        if (x + offset == state.columns) pos = null
-        break
-
-      case AE.BOTTOM_LEFT:
-        pos = cellIdx + state.columns - offset
-        if (x == 0) pos = null
-        break
-      case AE.BOTTOM:
-        pos = cellIdx + state.columns
-        break
-      case AE.BOTTOM_RIGHT:
-        pos = cellIdx + state.columns + offset
-        if (x + 1 == state.columns) pos = null
-        break
-    }
-
-    if (pos < 0 || pos >= len) return null
-
-    return pos
-  },
-
-  // testAroundPos: (cellIndex) => {
-
-  //   console.log(
-  //     `[${meth.getPosAround(cellIndex, 7)}]`,
-  //     `[${meth.getPosAround(cellIndex, 8)}]`,
-  //     `[${meth.getPosAround(cellIndex, 9)}]`
-  //   )
-
-  //   console.log(
-  //     `[${meth.getPosAround(cellIndex, 4)}]`,
-  //     `[${cellIndex}]`,
-  //     `[${meth.getPosAround(cellIndex, 6)}]`)
-
-  //   console.log(
-  //     `[${meth.getPosAround(cellIndex, 1)}]`,
-  //     `[${meth.getPosAround(cellIndex, 2)}]`,
-  //     `[${meth.getPosAround(cellIndex, 3)}]`)
-  // },
-
   updateCounterAroundCell: (cellIndex) => {
     // let temp = `BIDX: ${cellIndex}\n`
 
-    for (let key in AE) {
-      const pos = meth.getPosAround(cellIndex, AE[key])
-      if (pos === null) continue
-      if (state.cells[pos].value < 0) continue
+    meth.forEachArround(cellIndex, (x, y) => {
+      const pos = meth.getPosFromXY(x, y)
+      if (state.cells[pos].value < 0) return
 
-      // temp += `[${pos}]: ${state.cells[pos].value + 1}\n`
-
-      // console.log(`[${key}]:`, `[${pos}]`)
       state.cells[pos].value = state.cells[pos].value + 1
-    }
-
-    // console.log(temp)
+    })
   },
 
   placeBombs: () => {
@@ -239,16 +160,6 @@ const meth = {
     return (notBombs - openedCount) <= 0
   },
 
-  // openAroundCell: (cellIdx) => {
-  //   for (let key in AE) {
-  //     const pos = meth.getPosAround(cellIdx, AE[key],)
-  //     if (pos === null) continue
-  //     if (state.cells[pos].value < 0) continue
-
-  //     state.cells[pos].value = state.cells[pos].value + 1
-  //   }
-  // },
-
   openCell: (val) => {
     if (!state.started) return
     console.log('openCell: ' + val)
@@ -268,12 +179,16 @@ const meth = {
     if (state.cells[val].value == 0) {
       // meth.openAroundCell(val)
 
-      const x = val % state.columns
-      const y = parseInt(val / state.columns)
+      let time = 0
 
-      meth.forEachArround(x, y, (a, b) => {
-        const pos =  state.columns * b + a
-        if (!state.cells[pos].opened) meth.openCell(pos)
+      meth.forEachArround(val, (a, b) => {
+        time += 10
+        setTimeout(() => {
+          const pos = state.columns * b + a
+          if (!state.cells[pos].opened) {
+            meth.openCell(pos)
+          }
+        }, time)
       })
     }
 
