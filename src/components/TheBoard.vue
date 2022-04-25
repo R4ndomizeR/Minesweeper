@@ -57,12 +57,12 @@
 <script  setup>
 import { onMounted, reactive } from 'vue'
 import BoardCell from './BoardCell.vue'
-import { utils } from '../utils/utils.js'
+import { utils } from '../helpers/utils.js'
 
 const inputState = reactive({
-  columns: 60,
-  rows: 30,
-  bombs: 100,
+  columns: 10,
+  rows: 10,
+  bombs: 10,
 })
 
 const state = reactive({
@@ -132,7 +132,7 @@ const meth = {
     // console.log(state.bombsArray)
 
     state.bombsArray.forEach((item) => {
-      console.log(`BPOS:${item}`)
+      // console.log(`BPOS:${item}`)
       state.cells[item].value = -1
       meth.updateCounterAroundCell(item)
     })
@@ -182,7 +182,7 @@ const meth = {
       let time = 0
 
       utils.forEachArround(val, state.rows, state.columns, (a, b) => {
-        time += 10
+        time += 20
         setTimeout(() => {
           const pos = state.columns * b + a
           if (!state.cells[pos].opened) {
@@ -227,7 +227,7 @@ const meth = {
     )
 
     state.bombsArray.forEach((idx) => {
-      time += 30
+      time += 80
       setTimeout(() => {
         state.cells[idx].opened = true
       }, time)
@@ -242,11 +242,13 @@ const meth = {
     console.log('GAME_OVER')
     meth.gameEnd()
     meth.exploseBombs()
+    // alert('GAME_OVER')
   },
 
   gameWin: () => {
     console.log('YOU_WIN')
     meth.gameEnd()
+    // alert('YOU_WIN')
   },
 }
 
