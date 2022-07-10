@@ -56,8 +56,8 @@
 
 <script  setup>
 import { onMounted, reactive } from 'vue'
-import BoardCell from './BoardCell.vue'
 import { utils } from '../helpers/utils.js'
+import BoardCell from './BoardCell.vue'
 
 const inputState = reactive({
   columns: 10,
@@ -242,13 +242,13 @@ const meth = {
     console.log('GAME_OVER')
     meth.gameEnd()
     meth.exploseBombs()
-    // alert('GAME_OVER')
+    alert('GAME_OVER')
   },
 
   gameWin: () => {
     console.log('YOU_WIN')
     meth.gameEnd()
-    // alert('YOU_WIN')
+    alert('YOU_WIN')
   },
 }
 
